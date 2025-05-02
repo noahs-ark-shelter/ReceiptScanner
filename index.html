@@ -553,7 +553,7 @@
             // Media & Display
             const videoElement = document.getElementById('camera-feed');
             const canvasElement = document.getElementById('capture-canvas');
-            const imagePreview = document.getElementById('image-preview-container');
+            const imagePreview = document.getElementById('image-preview');
             const downloadLink = document.getElementById('download-link');
             // Form & Inputs
             const receiptForm = document.getElementById('receipt-form');
@@ -622,7 +622,7 @@
                 if (isProcessing || !capturedImageDataURL) return;
                 downloadLink.href = capturedImageDataURL;
                 const timestamp = new Date();
-                const filename = `receipt-${timestamp.getFullYear()}${String(timestamp.getMonth() + 1).padStart(2, '0')}${String(timestamp.getDate()).padStart(2, '0')}_${String(timestamp.getHours()).padStart(2, '0')}${String(timestamp.getMinutes()).padStart(2, '0')}${String(timestamp.getSeconds()).padStart(2, '0')}.jpg`;
+                const filename = `document-${timestamp.getFullYear()}${String(timestamp.getMonth() + 1).padStart(2, '0')}${String(timestamp.getDate()).padStart(2, '0')}_${String(timestamp.getHours()).padStart(2, '0')}${String(timestamp.getMinutes()).padStart(2, '0')}${String(timestamp.getSeconds()).padStart(2, '0')}.jpg`;
                 downloadLink.download = filename;
                 downloadLink.click();
                 showStatus("Image downloaded.", "success", 3000);
@@ -816,16 +816,16 @@
                 let vendor = "Unknown";
                 for (const line of lines) {
                     const trimmedLine = line.trim();
-                     if (!trimmedLine.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/) && !trimmedLine.match(/^\d{1,4}\s+[A-Za-z]/) && !trimmedLine.match(/(\d{2}:\d{2})/) && trimmedLine.length > 2 && trimmedLine.length < 50) {
+                    if (!trimmedLine.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/) && !trimmedLine.match(/^\d{1,4}\s+[A-Za-z]/) && !trimmedLine.match(/(\d{2}:\d{2})/) && trimmedLine.length > 2 && trimmedLine.length < 50) {
                         vendor = trimmedLine; break;
                     }
                 }
                 vendorInput.value = vendor;
                 let dateFound = '';
                     const datePatterns = [
-                        /(\d{4})[-/](\d{1,2})[-/](\d{1,2})/, // YYYY-MM-DD
+                        /(\d{4})[-/](\d{1,2})[-/](\d{1,2})/, // ISO-MM-DD
                         /(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/, // MM/DD/YY or MM/DD/YYYY
-                        /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*,?\s*(\d{2,4})/i, // DD Month YYYY
+                        /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*,?\s*(\d{2,4})/i, // DD MonthOfMonth YYYY
                         /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{1,2}),?\s*(\d{2,4})/i // Month DD, YYYY
                     ];
                 for (const line of lines) {
@@ -857,7 +857,7 @@
                                     const parsedDate = new Date(year, month, day);
                                     // Check if the parsed date is valid
                                     if (parsedDate.getFullYear() === year && parsedDate.getMonth() === month && parsedDate.getDate() === day) {
-                                        dateFound = parsedDate.toISOString().split('T')[0]; // Get YYYY-MM-DD
+                                        dateFound = parsedDate.toISOString().split('T')[0]; // Get ISO format
                                         break;
                                     }
                                 }
@@ -865,14 +865,13 @@
                                 console.warn("Date parsing error:", e);
                             }
                         }
-                    }
-                    if (dateFound) break; // Stop searching for dates if one is found
+                    } if (dateFound) break; // Stop searching for dates if one is found
                 }
                 dateInput.value = dateFound || new Date().toISOString().split('T')[0];
 
 
                 let amount = '';
-                const amountKeywords = ['Total', 'Amount', 'Balance', 'Due', 'Debit', 'Charge', 'Paid', 'Subtotal', 'S/Total', 'Total Due', 'Pay', 'Net Pay', 'Net Pay:'];
+                const amountKeywords = ['Total', 'Amount', 'Balance', 'Due', 'Debit', 'Charge', 'Paid', 'Subtotal', 'S/Total', 'Total Due', 'Pay', 'Net Pay', 'Net Pay:','Gross Pay'];
                 const amountRegex = /(?:[$£€]\s?|\b)(\d{1,3}(?:[,\s]\d{3})*(?:[.,]\d{2}))\b|\b(\d+[.,]\d{2})\b/;
                 let potentialAmounts = [];
                 for (let i = lines.length - 1; i >= 0; i--) {
