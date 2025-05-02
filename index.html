@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Receipt Scanner</title>
+    <title>Receipt & Paystub Scanner</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -439,12 +439,12 @@
 <body>
     <div class="container">
         <header>
-            <h1>Receipt Scanner</h1>
+            <h1>Receipt & Paystub Scanner</h1>
         </header>
 
         <main>
             <section id="start-section" class="active-section">
-                <p>Scan your receipt using your device's camera and save the details.</p>
+                <p>Scan your receipt or paystub using your device's camera and save the details.</p>
                 <button id="start-scan-btn" class="btn btn-primary">Start Scanning</button>
             </section>
 
@@ -455,7 +455,7 @@
                     <div class="overlay" aria-hidden="true"></div>
                 </div>
                 <div class="scan-actions">
-                    <button id="capture-btn" class="btn btn-capture" title="Capture Image" aria-label="Capture Receipt Image"></button>
+                    <button id="capture-btn" class="btn btn-capture" title="Capture Image" aria-label="Capture Receipt or Paystub Image"></button>
                     <button id="cancel-scan-btn" class="btn btn-secondary">Cancel</button>
                 </div>
             </section>
@@ -463,14 +463,21 @@
             <section id="review-section" class="hidden-section">
                 <h2>Review Details</h2>
                 <div class="captured-image-preview">
-                    <img id="image-preview" src="#" alt="Captured Receipt Preview"/>
+                    <img id="image-preview" src="#" alt="Captured Image Preview"/>
                     <a id="download-link" style="display: none;" aria-hidden="true"></a>
                 </div>
                 <form id="receipt-form" aria-labelledby="review-heading">
-                    <h2 id="review-heading" class="hidden-section">Receipt Details Form</h2>
+                    <h2 id="review-heading" class="hidden-section">Review Details Form</h2>
                     <div class="form-group">
-                        <label for="vendor">Vendor:</label>
-                        <input type="text" id="vendor" name="vendor" required placeholder="e.g., Store Name">
+                        <label for="document-type">Document Type:</label>
+                        <select id="document-type" name="documentType" required>
+                            <option value="receipt">Receipt</option>
+                            <option value="paystub">Paystub</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="vendor">Vendor/Payer:</label>
+                        <input type="text" id="vendor" name="vendor" required placeholder="e.g., Store Name, Employer">
                     </div>
                     <div class="form-group">
                         <label for="date">Date:</label>
@@ -482,12 +489,12 @@
                     </div>
                     <div class="form-group">
                         <label for="category">Category (Optional):</label>
-                        <input type="text" id="category" name="category" placeholder="e.g., Groceries, Gas">
+                        <input type="text" id="category" name="category" placeholder="e.g., Groceries, Salary">
                     </div>
                     <div class="form-actions">
                         <button type="submit" id="save-btn" class="btn btn-primary">Save to Sheet</button>
                         <button type="button" id="rescan-btn" class="btn btn-secondary">Scan Again</button>
-                        <button type="button" id="download-btn" class="btn btn-info">Download Receipt</button>
+                        <button type="button" id="download-btn" class="btn btn-info">Download </button>
                     </div>
                 </form>
             </section>
@@ -553,6 +560,8 @@
             const vendorInput = document.getElementById('vendor');
             const dateInput = document.getElementById('date');
             const amountInput = document.getElementById('amount');
+             const categoryInput = document.getElementById('category');
+             const documentTypeInput = document.getElementById('document-type');
             // Status & Feedback
             const statusMessage = document.getElementById('status-message');
             const statusText = document.getElementById('status-text');
@@ -613,10 +622,10 @@
                 if (isProcessing || !capturedImageDataURL) return;
                 downloadLink.href = capturedImageDataURL;
                 const timestamp = new Date();
-                const filename = `receipt-${timestamp.getFullYear()}${String(timestamp.getMonth() + 1).padStart(2, '0')}${String(timestamp.getDate()).padStart(2, '0')}_${String(timestamp.getHours()).padStart(2, '0')}${String(timestamp.getMinutes()).padStart(2, '0')}${String(timestamp.getSeconds()).padStart(2, '0')}.jpg`;
+                const filename = `document-${timestamp.getFullYear()}${String(timestamp.getMonth() + 1).padStart(2, '0')}${String(timestamp.getDate()).padStart(2, '0')}_${String(timestamp.getHours()).padStart(2, '0')}${String(timestamp.getMinutes()).padStart(2, '0')}${String(timestamp.getSeconds()).padStart(2, '0')}.jpg`;
                 downloadLink.download = filename;
                 downloadLink.click();
-                showStatus("Receipt downloaded.", "success", 3000);
+                showStatus("Image downloaded.", "success", 3000);
             });
             receiptForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
@@ -631,11 +640,12 @@
                 const formData = new FormData(receiptForm);
                 const dataToSend = {
                     imageData: capturedImageDataURL,
+                    documentType: formData.get('documentType'),
                     vendor: formData.get('vendor'),
                     date: formData.get('date'),
                     amount: formData.get('amount'),
                     category: formData.get('category') || '',
-                    filename: `receipt-${new Date().toISOString()}.jpg`
+                    filename: `document-${new Date().toISOString()}.jpg`
                 };
                 try {
                     const response = await fetch(APPS_SCRIPT_URL, {
@@ -651,7 +661,7 @@
                     let data;
                     if (response.type === 'opaque') {
                         console.warn("Received opaque response from Apps Script. Assuming success.");
-                        data = { status: 'success', message: 'Receipt likely saved (opaque response).' };
+                        data = { status: 'success', message: 'Data saved (opaque response).' };
                     } else {
                         const contentType = response.headers.get("content-type");
                         if (contentType && contentType.indexOf("application/json") !== -1) {
@@ -659,19 +669,19 @@
                         } else {
                             const textResponse = await response.text();
                             console.warn("Received non-JSON response:", textResponse);
-                            data = { status: 'success', message: 'Receipt saved (non-JSON response received).' };
+                            data = { status: 'success', message: 'Data saved (non-JSON response received).' };
                         }
                     }
                     console.log('Response from Apps Script:', data);
                     if (data.status === 'success') {
-                        showStatus(data.message || "Receipt saved successfully!", "success", 4000);
+                        showStatus(data.message || "Data saved successfully!", "success", 4000);
                         resetReviewState();
                     } else {
                         throw new Error(data.message || "Unknown error reported by Apps Script.");
                     }
                 } catch (error) {
                     console.error('Error sending data to Apps Script:', error);
-                    showStatus(`Error saving receipt: ${error.message}`, "error", 8000);
+                    showStatus(`Error saving data: ${error.message}`, "error", 8000);
                 } finally {
                     setReviewButtonsState(true);
                     isProcessing = false;
@@ -713,24 +723,30 @@
             }
             function captureImage() {
                 if (!currentStream || videoElement.paused || videoElement.ended || !videoElement.videoWidth) {
-                    showStatus("Camera not ready or stream ended.", "error");
+                    const errorMessage = "Camera not ready or stream ended.";
+                    showStatus(errorMessage, "error");
+                    console.error(errorMessage);
                     capturedImageDataURL = null; return;
                 }
                 canvasElement.width = videoElement.videoWidth;
                 canvasElement.height = videoElement.videoHeight;
                 const context = canvasElement.getContext('2d');
                 if (!context) {
-                    showStatus("Could not get canvas context.", "error");
-                    capturedImageDataURL = null; return;
+                    const errorMessage = "Could not get canvas context.";
+                    showStatus(errorMessage, "error");
+                     console.error(errorMessage);
+                    capturedImageDataURL = null;
+                    return;
                 }
                 context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
                 try {
                     capturedImageDataURL = canvasElement.toDataURL('image/jpeg', IMAGE_QUALITY);
                     imagePreview.src = capturedImageDataURL;
-                    console.log(`Image captured (${canvasElement.width}x${canvasElement.height}, Quality: ${IMAGE_QUALITY}).`);
+                    console.log(`Image captured (${canvasElement.width}x${canvasElement.height}, Quality: ${IMAGE_QUALITY}). Data URL length: ${capturedImageDataURL.length}`); // Log the length
                 } catch (e) {
-                    console.error("Error converting canvas to data URL:", e);
-                    showStatus("Error capturing image format.", "error");
+                    const errorMessage = `Error converting canvas to data URL: ${e.message}`;
+                    showStatus(errorMessage, "error");
+                    console.error(errorMessage, e); // Log the error object
                     capturedImageDataURL = null;
                 }
             }
@@ -761,18 +777,17 @@
                     setReviewButtonsState(true);
                     return;
                 }
-                showStatus("Processing receipt...", "processing", 0);
+                showStatus("Processing document...", "processing", 0);
                 setReviewButtonsState(false);
                 try {
                     const { data: { text } } = await worker.recognize(imageDataUrl);
                     if (!text || text.trim() === '') {
                         console.warn("OCR Result: No text detected.");
-                        showStatus("Could not detect text on the receipt.", "error", 5000);
+                        showStatus("Could not detect text on the document.", "error", 5000);
                         vendorInput.value = '';
                         amountInput.value = '';
                     } else {
                         console.log("OCR Result:", text.substring(0, 200) + "...");
-                        showStatus("Analyzing extracted text...", "processing", 0);
                         parseOCRText(text);
                         showStatus("Review extracted details below.", "success", 5000);
                     }
@@ -784,15 +799,15 @@
                 }
             }
             function updateOCRProgress(m) {
-                console.log("OCR Progress:", m);
-                let statusMsg = "Processing OCR...";
+                console.log("OCR Progress:",m);
+                let statusMsg = "Processing document...";
                 if (m.status === "loading language model" && m.progress) {
                     statusMsg = `Loading language model... ${Math.round(m.progress * 100)}%`;
                     ocrProgressBar.style.width = `${Math.round(m.progress * 100)}%`;
                 } else if (m.status === "recognizing text" && m.progress) {
                     statusMsg = `Recognizing text... ${Math.round(m.progress * 100)}%`;
                     ocrProgressBar.style.width = `${Math.round(m.progress * 100)}%`;
-                } else if (m.status === "initializing api" || m.status === "initialized api"){
+                } else if (m.status === "initializing api" || m.status === "initialized api") {
                     statusMsg = "Initializing OCR API...";
                     ocrProgressBar.style.width = '0%';
                 } else if (m.status === "downloading") {
@@ -803,7 +818,7 @@
             }
             function parseOCRText(text) {
                 const lines = text.split('\n').filter(line => line.trim().length > 1);
-                let vendor = "Unknown Vendor";
+                let vendor = "Unknown";
                 for (const line of lines) {
                     const trimmedLine = line.trim();
                     if (!trimmedLine.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/) && !trimmedLine.match(/^\d{1,4}\s+[A-Za-z]/) && !trimmedLine.match(/(\d{2}:\d{2})/) && trimmedLine.length > 2 && trimmedLine.length < 50) {
@@ -812,30 +827,74 @@
                 }
                 vendorInput.value = vendor;
                 let dateFound = '';
-                const datePatterns = [ /(\d{4})[-/](\d{1,2})[-/](\d{1,2})/, /(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/, /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*,?\s*(\d{2,4})/i, /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{1,2}),?\s*(\d{2,4})/i ];
+                    const datePatterns = [
+                        /(\d{4})[-/](\d{1,2})[-/](\d{1,2})/, // ISO-MM-DD
+                        /(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/, // MM/DD/YY or MM/DD/YYYY
+                        /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*,?\s*(\d{2,4})/i, // DD MonthOfMonth
+                        /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{1,2}),?\s*(\d{2,4})/i // Month DD,OfMonth
+                    ];
                 for (const line of lines) {
                     for (const pattern of datePatterns) {
                         const match = line.match(pattern);
                         if (match) {
                             try {
                                 let year, month, day;
-                                if (pattern.source.includes('(\\d{4})')) { year = parseInt(match[1]); month = parseInt(match[2]) - 1; day = parseInt(match[3]); }
-                                else if (pattern.source.includes('(\\d{2,4})')) { year = parseInt(match[3]); if (year < 100) year += 2000; if (isNaN(parseInt(match[1]))) { month = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(match[1].toLowerCase().substring(0,3)); day = parseInt(match[2]); } else { month = parseInt(match[1]) - 1; day = parseInt(match[2]); } }
-                                if (year && month >= 0 && day) { const parsedDate = new Date(year, month, day); if (parsedDate.getFullYear() === year && parsedDate.getMonth() === month && parsedDate.getDate() === day) { dateFound = parsedDate.toISOString().split('T')[0]; break; } }
-                            } catch (e) { console.warn("Date parsing error:", e); }
+                                if (pattern.source.includes('(\\d{4})')) {
+                                    year = parseInt(match[1]);
+                                    month = parseInt(match[2]) - 1; // Month is 0-indexed in JavaScript Date
+                                    day = parseInt(match[3]);
+                                } else if (pattern.source.includes('(\\d{2,4})')) {
+                                     year = parseInt(match[3]);
+                                    if (year < 100) {
+                                        year += 2000; // Assume 20xx for 2-digit years
+                                    }
+                                    if(isNaN(parseInt(match[1]))) {
+                                         month = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(match[1].toLowerCase().substring(0,3));
+                                         day = parseInt(match[2]);
+                                    }
+                                    else{
+                                         month = parseInt(match[1]) - 1;
+                                         day = parseInt(match[2]);
+                                    }
+                                }
+
+                                if (year && month >= 0 && day) {
+                                    const parsedDate = new Date(year, month, day);
+                                    // Check if the parsed date is valid
+                                    if (parsedDate.getFullYear() === year && parsedDate.getMonth() === month && parsedDate.getDate() === day) {
+                                        dateFound = parsedDate.toISOString().split('T')[0]; // Get ISO format
+                                        break;
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn("Date parsing error:", e);
+                            }
                         }
-                    } if (dateFound) break;
-                } dateInput.value = dateFound || new Date().toISOString().split('T')[0];
+                    } if (dateFound) break; // Stop searching for dates if one is found
+                }
+                dateInput.value = dateFound || new Date().toISOString().split('T')[0];
+
+
                 let amount = '';
-                const amountKeywords = ['Total', 'Amount', 'Balance', 'Due', 'Debit', 'Charge', 'Paid', 'Subtotal', 'S/Total', 'Total Due'];
+                const amountKeywords = ['Total', 'Amount', 'Balance', 'Due', 'Debit', 'Charge', 'Paid', 'Subtotal', 'S/Total', 'Total Due', 'Pay', 'Net Pay', 'Net Pay:','Gross Pay'];
                 const amountRegex = /(?:[$£€]\s?|\b)(\d{1,3}(?:[,\s]\d{3})*(?:[.,]\d{2}))\b|\b(\d+[.,]\d{2})\b/;
                 let potentialAmounts = [];
                 for (let i = lines.length - 1; i >= 0; i--) {
                     const line = lines[i]; const match = line.match(amountRegex);
                     if (match) { const numberString = (match[1] || match[2]).replace(/[$,£€\s]/g, '').replace(',', '.'); const numericValue = parseFloat(numberString);
                         if (!isNaN(numericValue)) { let keywordProximity = -1; for (const keyword of amountKeywords) { const lowerLine = line.toLowerCase(); const nextLine = (i + 1 < lines.length) ? lines[i+1].toLowerCase() : ""; if (lowerLine.includes(keyword.toLowerCase())) { keywordProximity = 0; break; } if (nextLine.includes(keyword.toLowerCase())) { keywordProximity = 1; } } potentialAmounts.push({ value: numericValue, keywordProximity: keywordProximity }); } }
-                } potentialAmounts.sort((a, b) => { if (a.keywordProximity !== -1 && b.keywordProximity === -1) return -1; if (a.keywordProximity === -1 && b.keywordProximity !== -1) return 1; if (a.keywordProximity !== -1 && b.keywordProximity !== -1) { if (a.keywordProximity !== b.keywordProximity) return a.keywordProximity - b.keywordProximity; } return b.value - a.value; });
-                if (potentialAmounts.length > 0) { amount = potentialAmounts[0].value.toFixed(2); } amountInput.value = amount;
+                } potentialAmounts.sort((a, b) => {
+                    if (a.keywordProximity !== -1 && b.keywordProximity === -1) return -1;
+                    if (a.keywordProximity === -1 && b.keywordProximity !== -1) return 1;
+                    if (a.keywordProximity !== -1 && b.keywordProximity !== -1) {
+                        if (a.keywordProximity !== b.keywordProximity) return a.keywordProximity - b.keywordProximity;
+                    }
+                    return b.value - a.value;
+                });
+                if (potentialAmounts.length > 0) {
+                    amount = potentialAmounts[0].value.toFixed(2);
+                }
+                amountInput.value = amount;
                 console.log(`Parsed - Vendor: ${vendorInput.value}, Date: ${dateInput.value}, Amount: ${amountInput.value}`);
             }
 
