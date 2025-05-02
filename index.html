@@ -792,7 +792,7 @@
                 } else if (m.status === "recognizing text" && m.progress) {
                     statusMsg = `Recognizing text... ${Math.round(m.progress * 100)}%`;
                     ocrProgressBar.style.width = `${Math.round(m.progress * 100)}%`;
-                } else if (m.status === "initializing api" || m.status === "initialized api"){
+                } else if (m.status === "initializing api" || m.status === "initialized api") {
                     statusMsg = "Initializing OCR API...";
                     ocrProgressBar.style.width = '0%';
                 } else if (m.status === "downloading") {
