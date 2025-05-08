@@ -25,12 +25,12 @@
         /* Main application container styling */
         .app-container {
             background-color: #ffffff; /* White background for the content card */
-            padding: 40px;
+            padding: 30px 40px; /* Adjusted padding */
             border-radius: 12px; /* Rounded corners for the card */
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); /* Subtle shadow */
             text-align: center;
             width: 90%;
-            max-width: 480px; /* Max width for the content card */
+            max-width: 500px; /* Slightly wider for video element */
             margin-top: 20px;
             margin-bottom: 20px;
         }
@@ -44,8 +44,29 @@
         .app-container p.description {
             font-size: 16px;
             color: #555; /* Softer color for description */
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             line-height: 1.5;
+        }
+
+        /* Camera View and Controls */
+        .camera-view-container {
+            display: none; /* Hidden by default, shown by JS */
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden; /* Ensures video corners are rounded if video itself isn't */
+        }
+
+        #cameraFeed {
+            width: 100%;
+            max-width: 400px; /* Control video size */
+            height: auto;
+            display: block; /* Remove extra space below video */
+            border-radius: 8px; /* If video element itself can have rounded corners */
+        }
+        
+        #captureButton {
+            margin-top: 10px;
         }
 
         /* Button styling */
@@ -83,6 +104,15 @@
             background-color: #e0e0e0;
             transform: translateY(-1px);
         }
+        
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+
 
         hr {
             border: none;
@@ -92,7 +122,6 @@
             margin-bottom: 20px;
         }
 
-        /* Footer styling (inside .app-container) */
         .app-container footer {
             padding: 10px 0 0 0;
             font-size: 14px;
@@ -106,11 +135,16 @@
         .app-container footer a {
             color: #007bff;
             text-decoration: none;
-            margin: 0 5px; /* Add a little spacing between links */
+            margin: 0 5px;
         }
 
         .app-container footer a:hover {
             text-decoration: underline;
+        }
+
+        /* Hidden file input */
+        #receiptFile {
+            display: none;
         }
     </style>
 </head>
@@ -123,12 +157,17 @@
 
         <main>
             <p class="description">
-                Scan your receipt or paycheck using your device's camera and save the details.
+                Scan your receipt or paycheck using your device's camera or upload an image.
             </p>
 
-            <button id="startScanningButton" class="btn btn-primary">Start Scanning</button>
-            <button id="viewSheetButton" class="btn btn-secondary">View Google Sheet</button>
-            <input type="file" id="receiptFile" name="receiptFile" accept="image/*" style="display: none;">
+            <div class="camera-view-container" id="cameraContainer">
+                <video id="cameraFeed" autoplay playsinline></video>
+                <button id="captureButton" class="btn btn-primary">Capture Image</button>
+                <button id="closeCameraButton" class="btn btn-danger">Close Camera</button>
+            </div>
+            <canvas id="photoCanvas" style="display:none;"></canvas> <button id="startScanningButton" class="btn btn-primary">Use Camera</button>
+            <button id="uploadFileButton" class="btn btn-secondary">Upload Image File</button>
+            <input type="file" id="receiptFile" name="receiptFile" accept="image/*"> <button id="viewSheetButton" class="btn btn-secondary" style="margin-top: 10px;">View Google Sheet</button>
         </main>
 
         <footer>
@@ -146,37 +185,138 @@
         // Simple script to set the current year in the footer dynamically
         document.getElementById('currentYear').textContent = new Date().getFullYear();
 
-        // Placeholder for button actions - you'll expand this in script.js
+        // DOM Elements
         const startScanningButton = document.getElementById('startScanningButton');
+        const uploadFileButton = document.getElementById('uploadFileButton');
         const viewSheetButton = document.getElementById('viewSheetButton');
         const receiptFileInput = document.getElementById('receiptFile');
+        const cameraContainer = document.getElementById('cameraContainer');
+        const cameraFeed = document.getElementById('cameraFeed');
+        const captureButton = document.getElementById('captureButton');
+        const closeCameraButton = document.getElementById('closeCameraButton');
+        const photoCanvas = document.getElementById('photoCanvas'); // Canvas element
+        let stream = null; // To store the camera stream
 
-        if(startScanningButton) {
-            startScanningButton.addEventListener('click', () => {
-                if(receiptFileInput) {
-                    receiptFileInput.click(); // Triggers the hidden file input
+        // Event Listener for "Use Camera" button
+        if (startScanningButton) {
+            startScanningButton.addEventListener('click', async () => {
+                console.log('Use Camera clicked');
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    try {
+                        // Request camera access
+                        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); // Prefer rear camera
+                        cameraContainer.style.display = 'block';
+                        cameraFeed.srcObject = stream;
+                        // Hide other buttons if needed
+                        startScanningButton.style.display = 'none';
+                        uploadFileButton.style.display = 'none';
+                    } catch (error) {
+                        console.error('Error accessing camera:', error);
+                        alert('Could not access the camera. Please ensure you have a camera enabled and have granted permission. You can still upload a file.');
+                        // Optionally show file input again or provide other feedback
+                        startScanningButton.style.display = 'block';
+                        uploadFileButton.style.display = 'block';
+                    }
+                } else {
+                    alert('Your browser does not support camera access. Please upload a file instead.');
                 }
-                console.log('Start Scanning clicked');
             });
         }
 
-        if(receiptFileInput) {
+        // Event Listener for "Upload Image File" button
+        if (uploadFileButton) {
+            uploadFileButton.addEventListener('click', () => {
+                if (receiptFileInput) {
+                    receiptFileInput.click(); // Triggers the hidden file input
+                }
+                console.log('Upload Image File clicked');
+            });
+        }
+        
+        // Event Listener for the hidden file input
+        if (receiptFileInput) {
             receiptFileInput.addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (file) {
                     console.log('File selected:', file.name);
-                    // TODO: Add logic to handle the selected file
+                    // TODO: Process the selected file (send to Vision API, etc.)
+                    // Example: processImageFile(file); 
                 }
             });
         }
 
-        if(viewSheetButton) {
+        // Event Listener for "Capture Image" button
+        if (captureButton) {
+            captureButton.addEventListener('click', () => {
+                if (stream) {
+                    const context = photoCanvas.getContext('2d');
+                    // Set canvas dimensions to match video feed for accurate capture
+                    photoCanvas.width = cameraFeed.videoWidth;
+                    photoCanvas.height = cameraFeed.videoHeight;
+                    // Draw the current video frame onto the canvas
+                    context.drawImage(cameraFeed, 0, 0, photoCanvas.width, photoCanvas.height);
+                    
+                    // Get the image data from the canvas (e.g., as a base64 data URL)
+                    const imageDataUrl = photoCanvas.toDataURL('image/jpeg'); // Or 'image/png'
+                    console.log('Image captured:', imageDataUrl.substring(0,50) + "..."); // Log a snippet
+                    
+                    // TODO: Now you can use imageDataUrl for:
+                    // 1. Displaying a preview (optional)
+                    // 2. Sending to Google Vision API
+                    // 3. Uploading to Google Drive (after converting from data URL to Blob if necessary)
+
+                    // After capture, you might want to close the camera or allow another capture
+                    // For now, let's just log it.
+                    alert("Image captured! (Check console for data URL snippet)");
+                    // You would then call a function to process this imageDataUrl
+                    // processCapturedImage(imageDataUrl);
+                } else {
+                    alert('Camera stream not available.');
+                }
+            });
+        }
+
+        // Event Listener for "Close Camera" button
+        if (closeCameraButton) {
+            closeCameraButton.addEventListener('click', () => {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop()); // Stop all tracks in the stream
+                }
+                cameraContainer.style.display = 'none';
+                cameraFeed.srcObject = null; // Clear the video source
+                // Show main buttons again
+                startScanningButton.style.display = 'block';
+                uploadFileButton.style.display = 'block';
+                console.log('Camera closed');
+            });
+        }
+
+        // Event Listener for "View Google Sheet" button
+        if (viewSheetButton) {
             viewSheetButton.addEventListener('click', () => {
                 console.log('View Google Sheet clicked');
                 // TODO: Add logic to redirect to the user's Google Sheet
                 // Example: window.open('YOUR_GOOGLE_SHEET_LINK_HERE_OR_VARIABLE', '_blank');
             });
         }
+
+        // Placeholder function for processing a captured image data URL
+        // function processCapturedImage(imageDataUrl) {
+        //     console.log("Processing captured image...");
+        //     // 1. Convert data URL to Blob/File object if needed for APIs
+        //     // 2. Call Vision API
+        //     // 3. Upload to Drive
+        //     // 4. Write to Sheets
+        // }
+
+        // Placeholder function for processing an uploaded file
+        // function processImageFile(fileObject) {
+        //     console.log("Processing uploaded file:", fileObject.name);
+        //     // 1. Call Vision API
+        //     // 2. Upload to Drive
+        //     // 3. Write to Sheets
+        // }
+
     </script>
     </body>
 </html>
