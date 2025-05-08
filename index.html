@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Receipt & Paycheck Scanner</title> <link rel="stylesheet" href="style.css">
-    <style>
+    <title>Receipt & Paycheck Scanner</title>
+    <link rel="stylesheet" href="style.css"> <style>
         /* General body styling */
         html {
             height: 100%;
@@ -16,27 +16,27 @@
             min-height: 100%;
             margin: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-            background-color: #e9ebee; /* Light greyish-blue background like the image's outer area */
+            background-color: #e9ebee; /* Light greyish-blue background */
             color: #333;
             align-items: center; /* Center .app-container horizontally */
             justify-content: center; /* Center .app-container vertically */
         }
 
-        /* Main application container styling, mimicking the image */
+        /* Main application container styling */
         .app-container {
             background-color: #ffffff; /* White background for the content card */
             padding: 40px;
             border-radius: 12px; /* Rounded corners for the card */
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); /* Subtle shadow */
             text-align: center;
             width: 90%;
             max-width: 480px; /* Max width for the content card */
-            margin-top: 20px; /* Space from top */
-            margin-bottom: 20px; /* Space from bottom */
+            margin-top: 20px;
+            margin-bottom: 20px;
         }
 
         .app-container h1 {
-            font-size: 28px; /* Larger title font */
+            font-size: 28px;
             color: #2c3e50; /* Darker color for title */
             margin-bottom: 15px;
         }
@@ -50,22 +50,22 @@
 
         /* Button styling */
         .btn {
-            display: block; /* Make buttons take full width available in their container (within reason) */
+            display: block;
             width: 100%;
             padding: 15px 20px;
             margin-bottom: 15px;
-            border-radius: 8px; /* Rounded corners for buttons */
+            border-radius: 8px;
             text-decoration: none;
             font-size: 16px;
             font-weight: 500;
             cursor: pointer;
             border: none;
-            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+            box-sizing: border-box;
             transition: background-color 0.3s ease, transform 0.1s ease;
         }
 
         .btn-primary {
-            background-image: linear-gradient(to right, #6a11cb 0%, #2575fc 100%); /* Gradient like the image */
+            background-image: linear-gradient(to right, #6a11cb 0%, #2575fc 100%);
             color: white;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
@@ -74,78 +74,70 @@
             transform: translateY(-1px);
         }
 
-
         .btn-secondary {
-            background-color: #f0f0f0; /* Light grey for secondary button */
-            color: #333; /* Dark text for secondary button */
-            border: 1px solid #ddd; /* Subtle border */
+            background-color: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
         }
         .btn-secondary:hover {
             background-color: #e0e0e0;
-             transform: translateY(-1px);
+            transform: translateY(-1px);
         }
 
         hr {
             border: none;
             height: 1px;
-            background-color: #e0e0e0; /* Light grey for the horizontal rule */
+            background-color: #e0e0e0;
             margin-top: 30px;
             margin-bottom: 20px;
         }
 
-        /* Footer styling */
-        footer {
-            width: 100%; /* Ensure footer takes full width if body isn't centering it directly */
-            text-align: center;
-            padding: 20px 0; /* Padding top and bottom */
-            font-size: 0.9em;
-            color: #777; /* Muted color for footer text */
-            margin-top: auto; /* Pushes footer to bottom if content is short and body is flex */
-        }
-        /* If .app-container is the main visual block, footer might be outside it or styled differently.
-           The image shows footer text inside the white block, so let's adjust.
-           If footer is part of .app-container, it doesn't need separate background.
-        */
-        .app-container footer { /* Styling for footer if it's inside the app-container */
-            padding: 10px 0 0 0; /* Less padding if inside the card */
+        /* Footer styling (inside .app-container) */
+        .app-container footer {
+            padding: 10px 0 0 0;
             font-size: 14px;
             color: #888;
         }
 
         .app-container footer p {
-            margin-bottom: 5px; /* Tighter spacing for footer lines */
+            margin-bottom: 5px;
         }
 
         .app-container footer a {
             color: #007bff;
             text-decoration: none;
+            margin: 0 5px; /* Add a little spacing between links */
         }
 
         .app-container footer a:hover {
             text-decoration: underline;
         }
-
     </style>
 </head>
 <body>
 
     <div class="app-container">
         <header>
-            <h1>Receipt & Paycheck Scanner</h1> </header>
+            <h1>Receipt & Paycheck Scanner</h1>
+        </header>
 
         <main>
             <p class="description">
-                Scan your receipt or paycheck using your device's camera and save the details. </p>
+                Scan your receipt or paycheck using your device's camera and save the details.
+            </p>
 
             <button id="startScanningButton" class="btn btn-primary">Start Scanning</button>
             <button id="viewSheetButton" class="btn btn-secondary">View Google Sheet</button>
             <input type="file" id="receiptFile" name="receiptFile" accept="image/*" style="display: none;">
-
         </main>
 
         <footer>
-            <hr> <p>&copy; <span id="currentYear"></span> Receipt Scanner App</p>
-            <p><a href="privacy.html">Privacy Policy</a></p>
+            <hr>
+            <p>&copy; <span id="currentYear"></span> Receipt Scanner App</p>
+            <p>
+                <a href="privacy.html">Privacy Policy</a> | 
+                <a href="terms.html">Terms of Service</a>
+            </p>
         </footer>
     </div>
 
@@ -161,12 +153,10 @@
 
         if(startScanningButton) {
             startScanningButton.addEventListener('click', () => {
-                // This triggers the hidden file input
                 if(receiptFileInput) {
-                    receiptFileInput.click();
+                    receiptFileInput.click(); // Triggers the hidden file input
                 }
                 console.log('Start Scanning clicked');
-                // Add logic for starting the camera or file selection if needed
             });
         }
 
@@ -175,21 +165,15 @@
                 const file = event.target.files[0];
                 if (file) {
                     console.log('File selected:', file.name);
-                    // Add logic here to handle the selected file:
-                    // 1. Display a preview (optional)
-                    // 2. Send to Google Vision API for OCR
-                    // 3. Process the OCR results
-                    // 4. Upload image to Google Drive
-                    // 5. Write data to Google Sheets
+                    // TODO: Add logic to handle the selected file
                 }
             });
         }
 
-
         if(viewSheetButton) {
             viewSheetButton.addEventListener('click', () => {
                 console.log('View Google Sheet clicked');
-                // Add logic to redirect to the user's Google Sheet or display data from it.
+                // TODO: Add logic to redirect to the user's Google Sheet
                 // Example: window.open('YOUR_GOOGLE_SHEET_LINK_HERE_OR_VARIABLE', '_blank');
             });
         }
