@@ -84,13 +84,17 @@
             box-sizing: border-box;
             transition: background-color 0.3s ease, transform 0.1s ease;
         }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
 
         .btn-primary {
             background-image: linear-gradient(to right, #6a11cb 0%, #2575fc 100%);
             color: white;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background-image: linear-gradient(to right, #5e0ead 0%, #1e66d4 100%);
             transform: translateY(-1px);
         }
@@ -100,7 +104,7 @@
             color: #333;
             border: 1px solid #ddd;
         }
-        .btn-secondary:hover {
+        .btn-secondary:hover:not(:disabled) {
             background-color: #e0e0e0;
             transform: translateY(-1px);
         }
@@ -109,8 +113,12 @@
             background-color: #e74c3c;
             color: white;
         }
-        .btn-danger:hover {
+        .btn-danger:hover:not(:disabled) {
             background-color: #c0392b;
+        }
+        
+        .auth-buttons {
+            margin-bottom:20px;
         }
 
 
@@ -146,6 +154,18 @@
         #receiptFile {
             display: none;
         }
+        #userProfile {
+            margin-bottom: 15px;
+            font-size: 0.9em;
+            color: #333;
+        }
+        #userProfile img {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
@@ -156,18 +176,34 @@
         </header>
 
         <main>
+            <div id="userProfile" style="display:none;">
+                <img id="userImage" src="" alt="User">
+                <span id="userName"></span>
+            </div>
+
+            <div class="auth-buttons">
+                <button id="signInButton" class="btn btn-primary">Sign In with Google</button>
+                <button id="signOutButton" class="btn btn-secondary" style="display:none;">Sign Out</button>
+            </div>
+            
             <p class="description">
                 Scan your receipt or paycheck using your device's camera or upload an image.
             </p>
 
             <div class="camera-view-container" id="cameraContainer">
                 <video id="cameraFeed" autoplay playsinline></video>
-                <button id="captureButton" class="btn btn-primary">Capture Image</button>
+                <button id="captureButton" class="btn btn-primary" disabled>Capture Image</button>
                 <button id="closeCameraButton" class="btn btn-danger">Close Camera</button>
             </div>
-            <canvas id="photoCanvas" style="display:none;"></canvas> <button id="startScanningButton" class="btn btn-primary">Use Camera</button>
-            <button id="uploadFileButton" class="btn btn-secondary">Upload Image File</button>
-            <input type="file" id="receiptFile" name="receiptFile" accept="image/*"> <button id="viewSheetButton" class="btn btn-secondary" style="margin-top: 10px;">View Google Sheet</button>
+            <canvas id="photoCanvas" style="display:none;"></canvas> 
+
+            <button id="startScanningButton" class="btn btn-primary" disabled>Use Camera</button>
+            <button id="uploadFileButton" class="btn btn-secondary" disabled>Upload Image File</button>
+            <input type="file" id="receiptFile" name="receiptFile" accept="image/*"> 
+
+            <button id="viewSheetButton" class="btn btn-secondary" style="margin-top: 10px;" disabled>View Google Sheet</button>
+            
+            <div id="statusMessage" style="margin-top: 15px; font-weight: bold;"></div>
         </main>
 
         <footer>
@@ -180,12 +216,31 @@
         </footer>
     </div>
 
-    <script src="script.js"></script>
-    <script>
-        // Simple script to set the current year in the footer dynamically
-        document.getElementById('currentYear').textContent = new Date().getFullYear();
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded"></script>
 
-        // DOM Elements
+    <script>
+        // --- CONFIGURATION (MUST BE REPLACED WITH YOUR ACTUAL VALUES) ---
+        const GOOGLE_API_KEY = 'AIzaSyDgcThdaqk_oyZCI2z_cLtqDdaFKvYXtJM'; // For Vision API. Use a restricted key.
+        const GOOGLE_CLIENT_ID = '800255123241-9mb6vdhd56pvgangdrtgo70kilqhck41.apps.googleusercontent.com'; // For OAuth. From Google Cloud Console.
+        const SPREADSHEET_ID = '1E35ohp5fFhaF5Mm4cY_-xdH3HLYQNc7toZfnG5d9lNQ'; // The ID of the Google Sheet to write to. From Sheet URL.
+        const SHEET_NAME = 'Sheet1';                             // The name of the sheet (tab) within the spreadsheet.
+
+        // --- SCOPES for Google APIs ---
+        // Define the permissions your app needs.
+        const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/vision.readonly'; // Scope for Sheets and Vision. Add drive.file if you implement Drive upload.
+
+        let tokenClient;      // Google Identity Services (GIS) token client
+        let gapiInited = false; // Flag for GAPI client initialization
+        let gisInited = false;  // Flag for GIS client initialization
+        let stream = null;      // To store the camera stream
+
+        // --- DOM Elements ---
+        const signInButton = document.getElementById('signInButton');
+        const signOutButton = document.getElementById('signOutButton');
+        const userProfileDiv = document.getElementById('userProfile');
+        const userImage = document.getElementById('userImage');
+        const userNameSpan = document.getElementById('userName');
         const startScanningButton = document.getElementById('startScanningButton');
         const uploadFileButton = document.getElementById('uploadFileButton');
         const viewSheetButton = document.getElementById('viewSheetButton');
@@ -194,129 +249,367 @@
         const cameraFeed = document.getElementById('cameraFeed');
         const captureButton = document.getElementById('captureButton');
         const closeCameraButton = document.getElementById('closeCameraButton');
-        const photoCanvas = document.getElementById('photoCanvas'); // Canvas element
-        let stream = null; // To store the camera stream
+        const photoCanvas = document.getElementById('photoCanvas');
+        const statusMessage = document.getElementById('statusMessage');
 
-        // Event Listener for "Use Camera" button
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        // --- Google API Initialization Callbacks ---
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+
+        async function initializeGapiClient() {
+            try {
+                await gapi.client.init({
+                    apiKey: GOOGLE_API_KEY, // IMPORTANT: Used for Vision API calls here. Ensure it's restricted.
+                    discoveryDocs: [
+                        "https://sheets.googleapis.com/$discovery/rest?version=v4",
+                        "https://vision.googleapis.com/$discovery/rest?version=v1"
+                        // "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest" // Add if using Drive
+                    ],
+                });
+                gapiInited = true;
+                updateAuthUi();
+            } catch (error) {
+                console.error("Error initializing GAPI client:", error);
+                statusMessage.textContent = "Error initializing Google APIs. Please refresh.";
+            }
+        }
+
+        function gisLoaded() {
+            try {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: GOOGLE_CLIENT_ID,
+                    scope: SCOPES,
+                    callback: handleTokenResponse, // This callback handles the token response
+                });
+                gisInited = true;
+                updateAuthUi();
+            } catch (error) {
+                console.error("Error initializing GIS client:", error);
+                statusMessage.textContent = "Error initializing Google Sign-In. Please refresh.";
+            }
+        }
+
+        // --- Authentication UI and Logic ---
+        function updateAuthUi() {
+            const token = gapi.client.getToken();
+            if (token && token.access_token) { // User is signed in
+                signInButton.style.display = 'none';
+                signOutButton.style.display = 'block';
+                userProfileDiv.style.display = 'block';
+                fetchUserInfo(); 
+                
+                startScanningButton.disabled = false;
+                uploadFileButton.disabled = false;
+                viewSheetButton.disabled = false;
+                captureButton.disabled = false; 
+                statusMessage.textContent = 'Signed in. Ready to scan!';
+            } else { // User is signed out
+                signInButton.style.display = 'block';
+                signOutButton.style.display = 'none';
+                userProfileDiv.style.display = 'none';
+
+                startScanningButton.disabled = true;
+                uploadFileButton.disabled = true;
+                viewSheetButton.disabled = true;
+                captureButton.disabled = true;
+                statusMessage.textContent = 'Please sign in with Google to use the scanner.';
+                if (gapiInited && gisInited) {
+                    // Ready for sign-in
+                } else {
+                    statusMessage.textContent = 'Initializing... Please wait.';
+                }
+            }
+        }
+        
+        async function fetchUserInfo() {
+            // Placeholder for fetching user info if needed
+            try {
+                // Example (requires 'profile' scope):
+                // const profile = await gapi.client.oauth2.userinfo.get();
+                // userNameSpan.textContent = profile.result.name;
+                // userImage.src = profile.result.picture;
+            } catch(e) {
+                console.warn("Could not fetch user info", e);
+            }
+        }
+
+        signInButton.addEventListener('click', () => {
+            if (!gisInited || !gapiInited) {
+                alert("Google services are still initializing. Please wait a moment and try again.");
+                return;
+            }
+            if (tokenClient) {
+                tokenClient.requestAccessToken({prompt: 'consent'});
+            } else {
+                console.error("Token client not initialized.");
+                statusMessage.textContent = "Sign-in error. Please refresh.";
+            }
+        });
+
+        function handleTokenResponse(response) {
+            if (response.error) {
+                console.error("OAuth Error:", response.error);
+                statusMessage.textContent = "Sign-in failed. Please try again.";
+                alert("Sign-in failed: " + response.error);
+                return;
+            }
+            gapi.client.setToken(response);
+            localStorage.setItem('google_auth_token', JSON.stringify(response)); 
+            console.log("Access Token obtained:", response.access_token.substring(0,10) + "...");
+            updateAuthUi();
+        }
+
+        signOutButton.addEventListener('click', () => {
+            const token = gapi.client.getToken();
+            if (token !== null) {
+                google.accounts.oauth2.revoke(token.access_token, () => {
+                    console.log('Access token revoked.');
+                });
+                gapi.client.setToken(null); 
+                localStorage.removeItem('google_auth_token'); 
+            }
+            closeCamera(); 
+            updateAuthUi();
+            statusMessage.textContent = 'Signed out.';
+        });
+        
+        // --- Event Listeners for App Features ---
         if (startScanningButton) {
             startScanningButton.addEventListener('click', async () => {
+                if (!gapi.client.getToken()) { alert("Please sign in first."); return; }
                 console.log('Use Camera clicked');
                 if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                     try {
-                        // Request camera access
-                        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); // Prefer rear camera
+                        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
                         cameraContainer.style.display = 'block';
                         cameraFeed.srcObject = stream;
-                        // Hide other buttons if needed
                         startScanningButton.style.display = 'none';
                         uploadFileButton.style.display = 'none';
+                        statusMessage.textContent = 'Camera active. Position receipt/paycheck and capture.';
                     } catch (error) {
                         console.error('Error accessing camera:', error);
-                        alert('Could not access the camera. Please ensure you have a camera enabled and have granted permission. You can still upload a file.');
-                        // Optionally show file input again or provide other feedback
+                        statusMessage.textContent = 'Error: Could not access camera.';
+                        alert('Could not access the camera. Please ensure permission is granted.');
                         startScanningButton.style.display = 'block';
                         uploadFileButton.style.display = 'block';
                     }
                 } else {
-                    alert('Your browser does not support camera access. Please upload a file instead.');
+                    alert('Your browser does not support camera access.');
+                    statusMessage.textContent = 'Camera not supported.';
                 }
             });
         }
 
-        // Event Listener for "Upload Image File" button
         if (uploadFileButton) {
             uploadFileButton.addEventListener('click', () => {
-                if (receiptFileInput) {
-                    receiptFileInput.click(); // Triggers the hidden file input
-                }
-                console.log('Upload Image File clicked');
+                if (!gapi.client.getToken()) { alert("Please sign in first."); return; }
+                receiptFileInput.click();
             });
         }
         
-        // Event Listener for the hidden file input
         if (receiptFileInput) {
-            receiptFileInput.addEventListener('change', (event) => {
+            receiptFileInput.addEventListener('change', async (event) => {
+                if (!gapi.client.getToken()) { alert("Please sign in first."); return; }
                 const file = event.target.files[0];
                 if (file) {
-                    console.log('File selected:', file.name);
-                    // TODO: Process the selected file (send to Vision API, etc.)
-                    // Example: processImageFile(file); 
+                    statusMessage.textContent = `Processing ${file.name}...`;
+                    await processImageFile(file);
                 }
             });
         }
 
-        // Event Listener for "Capture Image" button
         if (captureButton) {
-            captureButton.addEventListener('click', () => {
+            captureButton.addEventListener('click', async () => {
+                if (!gapi.client.getToken()) { alert("Please sign in first."); return; }
                 if (stream) {
                     const context = photoCanvas.getContext('2d');
-                    // Set canvas dimensions to match video feed for accurate capture
                     photoCanvas.width = cameraFeed.videoWidth;
                     photoCanvas.height = cameraFeed.videoHeight;
-                    // Draw the current video frame onto the canvas
                     context.drawImage(cameraFeed, 0, 0, photoCanvas.width, photoCanvas.height);
+                    const imageDataUrl = photoCanvas.toDataURL('image/jpeg');
+                    statusMessage.textContent = 'Image captured. Processing...';
                     
-                    // Get the image data from the canvas (e.g., as a base64 data URL)
-                    const imageDataUrl = photoCanvas.toDataURL('image/jpeg'); // Or 'image/png'
-                    console.log('Image captured:', imageDataUrl.substring(0,50) + "..."); // Log a snippet
-                    
-                    // TODO: Now you can use imageDataUrl for:
-                    // 1. Displaying a preview (optional)
-                    // 2. Sending to Google Vision API
-                    // 3. Uploading to Google Drive (after converting from data URL to Blob if necessary)
-
-                    // After capture, you might want to close the camera or allow another capture
-                    // For now, let's just log it.
-                    alert("Image captured! (Check console for data URL snippet)");
-                    // You would then call a function to process this imageDataUrl
-                    // processCapturedImage(imageDataUrl);
+                    const blob = await (await fetch(imageDataUrl)).blob();
+                    await processImageBlob(blob, "captured_image.jpg");
+                    closeCamera(); 
                 } else {
                     alert('Camera stream not available.');
+                    statusMessage.textContent = 'Error: Camera stream lost.';
                 }
             });
         }
 
-        // Event Listener for "Close Camera" button
         if (closeCameraButton) {
-            closeCameraButton.addEventListener('click', () => {
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop()); // Stop all tracks in the stream
-                }
-                cameraContainer.style.display = 'none';
-                cameraFeed.srcObject = null; // Clear the video source
-                // Show main buttons again
+            closeCameraButton.addEventListener('click', closeCamera);
+        }
+
+        function closeCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null; // Clear the stream variable
+            }
+            cameraContainer.style.display = 'none';
+            if (cameraFeed) cameraFeed.srcObject = null;
+            if (gapi.client.getToken()){ // Only show these if user is signed in
                 startScanningButton.style.display = 'block';
                 uploadFileButton.style.display = 'block';
-                console.log('Camera closed');
-            });
+            }
+            statusMessage.textContent = 'Camera closed.';
         }
 
-        // Event Listener for "View Google Sheet" button
         if (viewSheetButton) {
             viewSheetButton.addEventListener('click', () => {
-                console.log('View Google Sheet clicked');
-                // TODO: Add logic to redirect to the user's Google Sheet
-                // Example: window.open('YOUR_GOOGLE_SHEET_LINK_HERE_OR_VARIABLE', '_blank');
+                if (!gapi.client.getToken()) { alert("Please sign in first."); return; }
+                if (SPREADSHEET_ID) {
+                    window.open(`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit`, '_blank');
+                } else {
+                    alert('Spreadsheet ID not configured.');
+                    statusMessage.textContent = 'Error: Spreadsheet ID missing.';
+                }
             });
         }
 
-        // Placeholder function for processing a captured image data URL
-        // function processCapturedImage(imageDataUrl) {
-        //     console.log("Processing captured image...");
-        //     // 1. Convert data URL to Blob/File object if needed for APIs
-        //     // 2. Call Vision API
-        //     // 3. Upload to Drive
-        //     // 4. Write to Sheets
-        // }
+        // --- Core Processing Logic ---
+        async function processImageFile(fileObject) {
+            console.log("Processing uploaded file:", fileObject.name);
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64ImageData = reader.result.split(',')[1]; 
+                await callVisionAndSheetsAPI(base64ImageData, fileObject.name);
+            };
+            reader.onerror = () => {
+                console.error("Error reading file.");
+                statusMessage.textContent = 'Error reading file.';
+            };
+            reader.readAsDataURL(fileObject);
+        }
+        
+        async function processImageBlob(imageBlob, fileName) {
+            console.log("Processing image blob:", fileName);
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64ImageData = reader.result.split(',')[1];
+                await callVisionAndSheetsAPI(base64ImageData, fileName);
+            };
+            reader.onerror = () => {
+                console.error("Error reading blob.");
+                statusMessage.textContent = 'Error reading image blob.';
+            };
+            reader.readAsDataURL(imageBlob);
+        }
 
-        // Placeholder function for processing an uploaded file
-        // function processImageFile(fileObject) {
-        //     console.log("Processing uploaded file:", fileObject.name);
-        //     // 1. Call Vision API
-        //     // 2. Upload to Drive
-        //     // 3. Write to Sheets
-        // }
+        async function callVisionAndSheetsAPI(base64ImageData, imageName) {
+            // Check authentication status before making API calls
+            if (!gapi.client.getToken() || !gapi.client.getToken().access_token) {
+                alert("Authentication required. Please sign in.");
+                statusMessage.textContent = "Authentication failed or expired. Please sign in again.";
+                updateAuthUi(); // Refresh UI to show sign-in button
+                return;
+            }
 
-    </script>
-    </body>
-</html>
+            try {
+                statusMessage.textContent = 'Scanning image with Vision API...';
+                console.log("Calling Vision API...");
+                const visionRequest = {
+                    requests: [{
+                        image: { content: base64ImageData },
+                        features: [{ type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 }] 
+                    }]
+                };
+                
+                // Vision API call - uses API Key set during gapi.client.init
+                const visionResponse = await gapi.client.vision.images.annotate(visionRequest);
+                console.log('Vision API Response:', visionResponse);
+
+                if (!visionResponse.result.responses || !visionResponse.result.responses[0]) {
+                    throw new Error("Invalid response structure from Vision API.");
+                }
+                const textAnnotations = visionResponse.result.responses[0].textAnnotations;
+                if (!textAnnotations || textAnnotations.length === 0) {
+                    statusMessage.textContent = 'No text found in image.';
+                    console.log('No text found.');
+                    return;
+                }
+
+                const fullText = textAnnotations[0].description;
+                console.log("Full Extracted Text:\n", fullText);
+                const extractedDataForSheet = parseExtractedText(fullText);
+
+                statusMessage.textContent = 'Writing data to Google Sheets...';
+                console.log("Writing to Google Sheets:", extractedDataForSheet);
+                
+                const sheetData = [
+                    new Date().toLocaleString(), // Timestamp
+                    imageName,                   // Image name
+                    ...extractedDataForSheet     // Parsed data (vendor, date, total, snippet)
+                ];
+
+                // Sheets API call - uses OAuth token set by gapi.client.setToken()
+                const sheetsResponse = await gapi.client.sheets.spreadsheets.values.append({
+                    spreadsheetId: SPREADSHEET_ID,
+                    range: `${SHEET_NAME}!A1`, 
+                    valueInputOption: 'USER_ENTERED',
+                    insertDataOption: 'INSERT_ROWS',
+                    resource: {
+                        values: [sheetData]
+                    }
+                });
+                console.log('Google Sheets API Response:', sheetsResponse);
+                statusMessage.textContent = 'Data successfully saved to Google Sheet!';
+                alert('Data processed and saved to Google Sheet!');
+
+            } catch (error) {
+                console.error('Error during API calls:', error);
+                let errorMessage = 'Unknown error processing image.';
+                if (error.result && error.result.error) {
+                    errorMessage = error.result.error.message;
+                     // Check for common errors like authentication or permission issues
+                    if (error.result.error.status === "UNAUTHENTICATED") {
+                         errorMessage += " Authentication may have expired. Please try signing out and signing back in.";
+                         // Optionally revoke token and force sign-out
+                         // const token = gapi.client.getToken();
+                         // if (token) google.accounts.oauth2.revoke(token.access_token, () => {});
+                         // gapi.client.setToken(null);
+                         // localStorage.removeItem('google_auth_token');
+                         // updateAuthUi();
+                    } else if (error.result.error.status === "PERMISSION_DENIED") {
+                         errorMessage += " Please ensure the app has permission to access Google Sheets/Vision API.";
+                    }
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                statusMessage.textContent = `Error: ${errorMessage}`;
+                alert(`An error occurred: ${errorMessage}`);
+            }
+        }
+
+        function parseExtractedText(fullText) {
+            // This function needs significant improvement for accuracy.
+            // It's a placeholder for your custom parsing logic.
+            console.log("Attempting to parse text of length:", fullText.length);
+            const lines = fullText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+            
+            let vendor = "N/A";
+            let date = "N/A";
+            let total = "N/A";
+            let itemsSnippet = lines.slice(1, 4).join('; '); // Example: take a few lines as items
+
+            // Attempt to find Vendor (often one of the first few lines with capitalized words)
+            for (let i = 0; i < Math.min(lines.length, 5); i++) {
+                // Look for lines that seem like potential vendor names (e.g., capitalized words, common symbols)
+                if (lines[i].match(/^([A-Z][a-zA-Z0-9\s.&'-]+){1,5}$/) && lines[i].length > 2 && lines[i].length < 50 && !lines[i].match(/\d{1,2}[\/-]\d{1,2}[\/-]/)) { // Avoid lines that look like dates
+                    vendor = lines[i];
+                    break;
+                }
+            }
+             if (vendor === "N/A" && lines.length > 0) vendor = lines[0]; // Fallback to first line if no better candidate found
+
+
+            // Attempt to find Date (common US formats)
+            const dateRegex = [
+                /\b(\d{1,2}[\/-]\d{1,2}[\/-](\d{2}|\d{4}))\b/, // MM/DD/YY or MM/DD/YYYY
+                /\b(\d{1,2}\.\d{1,2}\.(\d{2}|\d{4}))\b/,       // MM.DD.YY or MM.DD.YYYY
+                /\b((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s\d{1,2}(?:st|nd|rd|th)?,\s\d{4})\b/i, // Month 
