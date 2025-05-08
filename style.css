@@ -1,0 +1,386 @@
+/* --- Base Styles & Font Import --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap'); /* Using Inter font */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif; /* Modern sans-serif font */
+    line-height: 1.6;
+    background-color: #eef2f7; /* Lighter, slightly blue background */
+    color: #334155; /* Darker grey-blue text */
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 20px; /* More padding around container */
+}
+
+/* --- Main Container --- */
+.container {
+    background-color: #ffffff;
+    padding: 30px 40px; /* Increased padding */
+    border-radius: 12px; /* Softer corners */
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.04); /* Softer, layered shadow */
+    width: 100%;
+    max-width: 550px;
+    text-align: center;
+    border: 1px solid #e2e8f0; /* Subtle border */
+}
+
+/* --- Header --- */
+header h1 {
+    color: #1e293b; /* Even darker blue for heading */
+    margin-bottom: 25px;
+    font-weight: 600;
+    font-size: 1.8rem; /* Slightly larger */
+}
+
+/* --- Section Handling & Transitions --- */
+.hidden-section {
+    display: none;
+}
+
+.active-section {
+    display: block;
+    animation: fadeIn 0.6s ease-out; /* Smoother fade-in */
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px); /* Slight upward movement */
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --- Camera Viewfinder --- */
+.camera-viewfinder {
+    position: relative;
+    width: 100%;
+    max-width: 450px;
+    margin: 25px auto;
+    overflow: hidden;
+    border-radius: 10px; /* Match container */
+    border: 1px solid #cbd5e1; /* Slightly darker border */
+    background-color: #1e293b; /* Dark background */
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); /* Inner shadow */
+}
+
+#camera-feed {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.camera-viewfinder .overlay {
+    position: absolute;
+    top: 5%; /* Adjusted overlay */
+    left: 5%;
+    right: 5%;
+    bottom: 5%;
+    border: 3px dashed rgba(255, 255, 255, 0.6); /* Thicker, less opaque */
+    border-radius: 5px;
+    pointer-events: none;
+    box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.3); /* Dim area outside overlay */
+}
+
+/* --- Button Styling (General) --- */
+.btn {
+    display: inline-block;
+    padding: 12px 28px; /* Slightly more padding */
+    font-size: 1rem;
+    font-weight: 500; /* Medium weight */
+    border: none;
+    border-radius: 8px; /* Softer corners */
+    cursor: pointer;
+    transition: all 0.25s ease; /* Smooth transition for all properties */
+    margin: 10px 5px;
+    vertical-align: middle;
+    text-decoration: none; /* Remove underline from potential <a> buttons */
+    color: white; /* Default text color for buttons */
+    letter-spacing: 0.5px; /* Slight letter spacing */
+}
+
+.btn:disabled {
+    background-color: #cbd5e1; /* Lighter grey when disabled */
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.btn:not(:disabled):hover {
+    transform: translateY(-2px); /* Lift effect on hover */
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1); /* Increased shadow on hover */
+}
+
+.btn:not(:disabled):active {
+    transform: translateY(0px); /* Press down effect */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Specific Button Colors & Styles */
+.btn-primary {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); /* Violet gradient */
+    box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
+}
+.btn-primary:hover:not(:disabled) {
+     box-shadow: 0 6px 14px rgba(79, 70, 229, 0.4);
+}
+
+.btn-secondary {
+    background-color: #e2e8f0; /* Lighter grey */
+    color: #475569; /* Darker grey text */
+    border: 1px solid #cbd5e1; /* Subtle border */
+}
+.btn-secondary:hover:not(:disabled) {
+    background-color: #f1f5f9; /* Very light grey on hover */
+    border-color: #94a3b8;
+    color: #1e293b;
+    transform: translateY(0); /* No lift for secondary */
+    box-shadow: none; /* No shadow lift */
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #0ea5e9 0%, #22d3ee 100%); /* Cyan gradient */
+    box-shadow: 0 4px 8px rgba(14, 165, 233, 0.3);
+}
+.btn-info:hover:not(:disabled) {
+     box-shadow: 0 6px 14px rgba(14, 165, 233, 0.4);
+}
+
+.scan-actions {
+    margin-top: 20px;
+    display: flex; /* Use flexbox for alignment */
+    justify-content: center;
+    align-items: center;
+    gap: 15px; /* Space between buttons */
+}
+
+.btn-capture {
+    background-color: #ef4444; /* Brighter red */
+    color: white;
+    padding: 0;
+    border-radius: 50%;
+    width: 75px; /* Slightly larger */
+    height: 75px;
+    font-size: 0; /* Hide text if any */
+    line-height: 75px;
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
+    border: 5px solid white; /* Thicker inner border */
+    outline: 3px solid rgba(0, 0, 0, 0.05); /* Softer outline */
+    outline-offset: 4px;
+    flex-shrink: 0; /* Prevent shrinking in flex layout */
+}
+.btn-capture:hover:not(:disabled) {
+    background-color: #dc2626; /* Darker red on hover */
+     box-shadow: 0 6px 14px rgba(239, 68, 68, 0.4);
+}
+
+/* --- Form Styling --- */
+#review-section h2 {
+    margin-bottom: 25px; /* More space */
+    color: #1e293b;
+    font-weight: 600;
+}
+
+.captured-image-preview {
+    position: relative;
+    max-width: 90%; /* Adjust as needed */
+    margin: 0 auto 25px auto;
+    border: 1px solid #e2e8f0; /* Match container border */
+    border-radius: 8px; /* Match button radius */
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05); /* Subtle shadow on preview */
+}
+
+#image-preview {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 7px; /* Inner radius for image */
+}
+
+.form-group {
+    margin-bottom: 18px; /* Increased spacing */
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: #475569; /* Slightly lighter label color */
+    font-size: 0.9rem; /* Smaller label */
+}
+
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group input[type="number"] {
+    width: 100%;
+    padding: 12px 15px; /* More padding */
+    border: 1px solid #cbd5e1; /* Softer border */
+    border-radius: 6px; /* Slightly less rounded than buttons */
+    font-size: 1rem;
+    color: #334155;
+    background-color: #f8fafc; /* Very light input background */
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #4f46e5; /* Use primary color for focus */
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); /* Subtle focus ring */
+}
+
+.form-actions {
+    margin-top: 30px; /* More space before actions */
+    padding-top: 20px; /* Add padding above buttons */
+    border-top: 1px solid #e2e8f0; /* Separator line */
+    text-align: center;
+}
+.form-actions .btn {
+    margin: 8px; /* Adjust spacing if needed */
+}
+
+/* --- Status Message Styling --- */
+.status {
+    margin: 25px auto 0 auto; /* Center horizontally */
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out, background-color 0.3s ease, color 0.3s ease;
+    visibility: hidden;
+    max-width: 90%; /* Prevent full width */
+    border-width: 1px;
+    border-style: solid;
+}
+.status.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.status.success {
+    background-color: #dcfce7; /* Lighter green */
+    color: #166534; /* Darker green text */
+    border-color: #a7f3d0; /* Softer green border */
+}
+
+.status.error {
+    background-color: #fee2e2; /* Lighter red */
+    color: #991b1b; /* Darker red text */
+    border-color: #fecaca; /* Softer red border */
+}
+
+.status.processing {
+    background-color: #e0f2fe; /* Lighter blue */
+    color: #075985; /* Darker blue text */
+    border-color: #bae6fd; /* Softer blue border */
+}
+
+.status.processing::before {
+    content: '';
+    display: inline-block;
+    width: 18px; /* Slightly larger spinner */
+    height: 18px;
+    border: 3px solid rgba(7, 89, 133, 0.2); /* Spinner track */
+    border-radius: 50%;
+    border-top-color: #075985; /* Spinner color */
+    animation: spin 1s linear infinite; /* Linear spin */
+    margin-right: 12px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* --- Link & Footer --- */
+.sheet-link {
+    margin-top: 30px;
+}
+.sheet-link a {
+    color: #4f46e5; /* Primary color link */
+    text-decoration: none;
+    font-weight: 500;
+    display: inline-block;
+    padding: 8px 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+.sheet-link a:hover {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #3730a3; /* Darker primary on hover */
+    text-decoration: none;
+}
+
+footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 0.85em;
+    color: #64748b; /* Lighter footer text */
+}
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 600px) {
+    body {
+        padding: 10px; /* Less padding on small screens */
+    }
+    .container {
+        padding: 20px 25px; /* Adjust container padding */
+    }
+    header h1 {
+        font-size: 1.6rem;
+    }
+    .btn {
+        padding: 10px 20px; /* Adjust button padding */
+        font-size: 0.95rem;
+    }
+     .btn-capture {
+        width: 65px;
+        height: 65px;
+        line-height: 55px;
+        border-width: 4px;
+        outline-offset: 3px;
+    }
+    .form-actions .btn {
+        margin: 6px;
+        width: calc(50% - 12px); /* Make buttons stack nicely if needed */
+        min-width: 120px; /* Ensure minimum width */
+    }
+    .form-actions {
+        display: flex;
+        flex-wrap: wrap; /* Allow buttons to wrap */
+        justify-content: center;
+    }
+}
+
+@media (max-width: 400px) {
+     .form-actions .btn {
+        width: 100%; /* Stack buttons fully */
+        margin: 5px 0;
+    }
+     .scan-actions {
+         gap: 10px;
+     }
+      .btn-capture {
+        width: 60px;
+        height: 60px;
+        line-height: 50px;
+    }
+}
